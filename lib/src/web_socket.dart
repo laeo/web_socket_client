@@ -31,21 +31,45 @@ class WebSocket {
     Backoff? backoff,
     Duration? timeout,
     String? binaryType,
+    Uri Function()? generator,
   })  : _uri = uri,
         _protocols = protocols,
         _pingInterval = pingInterval,
         _backoff = backoff ?? _defaultBackoff,
         _timeout = timeout ?? _defaultTimeout,
-        _binaryType = binaryType {
+        _binaryType = binaryType,
+        _generator = generator {
     _connect();
   }
 
-  final Uri _uri;
+  /// {@macro web_socket}
+  factory WebSocket.fromGenerator(
+    Uri Function() generator, {
+    Iterable<String>? protocols,
+    Duration? pingInterval,
+    Backoff? backoff,
+    Duration? timeout,
+    String? binaryType,
+  }) {
+    return WebSocket(
+      generator(),
+      protocols: protocols,
+      pingInterval: pingInterval,
+      backoff: backoff,
+      timeout: timeout,
+      binaryType: binaryType,
+      generator: generator,
+    );
+  }
+
+  Uri _uri;
+
   final Iterable<String>? _protocols;
   final Duration? _pingInterval;
   final Backoff _backoff;
   final Duration _timeout;
   final String? _binaryType;
+  final Uri Function()? _generator;
 
   final _messageController = StreamController<dynamic>.broadcast();
   final _connectionController = ConnectionController();
@@ -121,6 +145,8 @@ class WebSocket {
     if (_isClosedByClient || _isConnected) return;
 
     _connectionController.add(const Reconnecting());
+
+    _uri = _generator?.call() ?? _uri;
 
     await _connect();
 
